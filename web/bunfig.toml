@@ -6,3 +6,7 @@ bun = true
 printWidth = 100
 # What Biome covered: Markdown, YAML, TOML and HTML stay hand-formatted.
 ignorePatterns = ["**/*.md", "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.html"]
+
+# Tailwind for the dev server; build.ts passes the same plugin to Bun.build.
+[serve.static]
+plugins = ["bun-plugin-tailwind"]

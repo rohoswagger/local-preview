@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // E2E suite. Spins up the real Go backend against an in-memory SQLite DB and
-// the Vite dev server, then drives the UI through Chromium.
+// the Bun dev server (dev.ts), then drives the UI through Chromium.
 
 // Overridable so the suite can run beside a dev server already on :8080
 // (whose DB would otherwise leak state into the tests).
@@ -38,9 +38,9 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: `bun --bun vite --port ${FRONTEND_PORT} --strictPort`,
+      command: "bun dev.ts",
       cwd: ".",
-      env: { PREVIEW_BACKEND: `localhost:${BACKEND_PORT}` },
+      env: { PREVIEW_BACKEND: `localhost:${BACKEND_PORT}`, PORT: String(FRONTEND_PORT) },
       url: `http://localhost:${FRONTEND_PORT}/`,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
