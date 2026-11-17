@@ -10,7 +10,7 @@ registered repo, artifact, and state dir intact.
 
 ## What it provisions
 
-- EC2 instance (Amazon Linux 2023) running `lahmanja/local-preview` under
+- EC2 instance (Amazon Linux 2023) running `ghcr.io/rohoswagger/local-preview` under
   systemd, restarted on failure and on reboot
 - A dedicated gp3 data volume mounted at `/var/lib/local-preview`
   (`prevent_destroy` — it holds the mirror clones, artifacts, and state)
@@ -278,8 +278,10 @@ instance; the data volume is a separate resource and reattaches with every
 repo, artifact, and state dir intact. Expect a few minutes of downtime while
 the replacement boots — the Elastic IP means DNS doesn't change.
 
+Set `PREVIEW_RELEASE_IMAGE` to an actual published fork image tag or digest.
+
 ```sh
-terraform apply -var 'image=lahmanja/local-preview:0.4.0'
+terraform apply -var "image=$PREVIEW_RELEASE_IMAGE"
 ```
 
-Note that Docker Hub tags carry no `v` prefix, unlike the git tags.
+GHCR release tags omit the git tag’s `v` prefix.

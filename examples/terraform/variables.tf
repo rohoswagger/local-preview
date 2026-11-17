@@ -221,7 +221,7 @@ variable "http_port" {
 variable "image" {
   description = "Container image to run. Pin a release tag rather than tracking latest."
   type        = string
-  default     = "lahmanja/local-preview:latest"
+  default     = "ghcr.io/rohoswagger/local-preview:latest"
 }
 
 variable "data_dir" {

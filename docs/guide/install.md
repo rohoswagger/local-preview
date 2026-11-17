@@ -4,19 +4,10 @@ The server manages git repos in-process (no `git` binary needed) and runs
 your projects' own build commands, so whatever toolchains your targets build
 with — e.g. `go`, `bun` — must be on the `PATH`.
 
-## PyPI (recommended)
-
-```sh
-uv tool install local-preview
-```
-
-This installs the `preview` binary to `~/.local/bin`. Make sure that
-directory is on your `PATH`.
-
 ## GitHub releases
 
 Download a prebuilt archive for your platform from the
-[releases page](https://github.com/jmelahman/local-preview/releases) and
+[releases page](https://github.com/rohoswagger/local-preview/releases) and
 place the `preview` binary on your `PATH`.
 
 ## Docker
@@ -26,7 +17,7 @@ docker run -d --name preview \
   --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v preview-data:/data \
-  lahmanja/local-preview:latest
+  ghcr.io/rohoswagger/local-preview:latest
 ```
 
 ::: warning
@@ -83,8 +74,31 @@ example in `compose.yaml`.
 ## From source
 
 ```sh
-git clone https://github.com/jmelahman/local-preview
+git clone https://github.com/rohoswagger/local-preview
 cd local-preview
 bun install --cwd web --frozen-lockfile && bun run --cwd web build
 go build -tags embed -o preview .
 ```
+
+## Fork releases
+
+The `rohoswagger/local-preview` fork publishes GitHub release archives and
+GHCR images from version tags matching `v*.*.*`. It does not publish to PyPI.
+The workflow uses `GITHUB_TOKEN`; no Docker Hub or PyPI credentials are needed.
+Keep the Go module path `github.com/jmelahman/local-preview` unchanged.
+
+After the first image publication, open the package settings and set
+`local-preview` visibility to **Public**. GHCR initially creates private
+packages, even for public repositories. See
+[GitHub's container registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+This one-time step permits anonymous pulls from EC2 hosts. Verify access
+with an empty Docker credential directory before deployment:
+
+```sh
+docker_config=$(mktemp -d)
+DOCKER_CONFIG="$docker_config" docker pull ghcr.io/rohoswagger/local-preview:latest
+rm -rf "$docker_config"
+```
+
+Use the published image digest in infrastructure. Keep the control service,
+ingestion workers, and CI CLI on the same protocol release.
