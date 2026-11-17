@@ -100,5 +100,4 @@ DOCKER_CONFIG="$docker_config" docker pull ghcr.io/rohoswagger/local-preview:lat
 rm -rf "$docker_config"
 ```
 
-Use the published image digest in infrastructure. Keep the control service,
-ingestion workers, and CI CLI on the same protocol release.
+Use the published image digest in infrastructure.

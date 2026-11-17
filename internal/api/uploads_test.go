@@ -325,3 +325,29 @@ func TestSourceMatchesGitHubRepo(t *testing.T) {
 		}
 	}
 }
+
+// TestUploadRejectsWhenAtCapacity checks that a full upload gate answers a
+// retryable 503 before doing any work, and admits the same upload once a
+// slot frees.
+func TestUploadRejectsWhenAtCapacity(t *testing.T) {
+	deps, _ := newTestDeps(t)
+	deps.UploadSlots = make(chan struct{}, 1)
+	mux := NewMux(deps)
+	registerRepo(t, mux, newSourceRepo(t))
+	fe := tarGz(t, map[string]string{"index.html": "hello"})
+
+	deps.UploadSlots <- struct{}{}
+	rec := doUpload(t, mux, "/api/repos/demo/uploads/frontend?ref=main", fe)
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("got %d (Retry-After %q), want 503 with Retry-After: %s", rec.Code, rec.Header().Get("Retry-After"), rec.Body)
+	}
+
+	<-deps.UploadSlots
+	rec = doUpload(t, mux, "/api/repos/demo/uploads/frontend?ref=main", fe)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upload after a slot freed: %d %s", rec.Code, rec.Body)
+	}
+	if len(deps.UploadSlots) != 0 {
+		t.Fatalf("upload slot not released: %d held", len(deps.UploadSlots))
+	}
+}

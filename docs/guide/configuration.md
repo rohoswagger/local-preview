@@ -87,6 +87,7 @@ for lookup order and caching semantics.
 | `--preview-domain` | `preview.localhost` | Base domain previews are served under |
 | `--preview-base-url` | (derived from `--preview-domain` and `--addr`) | Public base URL of previews, e.g. `https://preview.example.com`. Sets the scheme, domain, and port of the URLs the server hands out — see [hosting behind a proxy](#hosting-behind-a-proxy) |
 | `--build-concurrency` | `2` | Number of deploys built in parallel |
+| `--max-concurrent-uploads` | `2` | Number of CI [uploads](/reference/api#uploads) processed in parallel. Each upload resolves and hashes its commit in process, so this bounds upload memory. Others get a `503` with `Retry-After`, which `preview upload` waits out for up to 30 minutes (`0` = unlimited) |
 | `--max-warm` | `8` | Maximum concurrently running preview processes; the least-recently-used are stopped beyond it (`0` = unlimited) |
 | `--max-warm-per-gb` | `0` | Derive `--max-warm` from this machine's RAM instead of a fixed number: `(total GiB − --max-warm-reserve-gb) × this`, floored at 1. Lets one worker launch template drive a mixed-instances fleet where each node sizes its warm cap to the instance it landed on; `0` keeps the fixed `--max-warm` (`$PREVIEW_MAX_WARM_PER_GB`) |
 | `--max-warm-reserve-gb` | `1` | GiB of RAM held back for the OS, orchestrator, and cache when `--max-warm-per-gb` derives the cap (`$PREVIEW_MAX_WARM_RESERVE_GB`) |

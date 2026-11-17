@@ -117,6 +117,7 @@ type serveOptions struct {
 
 	cacheMaxArtifactBytes int64
 	maxUploadBytes        int64
+	maxConcurrentUploads  int
 
 	reservedUpstreams []string
 
@@ -189,6 +190,7 @@ func Root() *cobra.Command {
 	serve.Flags().BoolVar(&opts.s3UseSSL, "s3-use-ssl", true, "Use TLS for the artifact-tier endpoint (set false for local MinIO over http)")
 	serve.Flags().Int64Var(&opts.cacheMaxArtifactBytes, "cache-max-artifact-bytes", 0, "Soft cap on resident (local-disk) artifact bytes; the coldest artifacts are swept back to the durable tier above it. Requires the artifact tier; 0 disables cache eviction and keeps every artifact resident (default: $PREVIEW_CACHE_MAX_ARTIFACT_BYTES)")
 	serve.Flags().Int64Var(&opts.maxUploadBytes, "max-upload-bytes", defaultMaxUploadBytes, "Maximum bytes a CI upload may stream: the compressed request body is rejected with 413 above it, and extraction aborts if the decompressed tar exceeds it (guards against a gzip bomb filling the disk). Raise it for larger legitimate artifacts; 0 disables both caps (default: $PREVIEW_MAX_UPLOAD_BYTES)")
+	serve.Flags().IntVar(&opts.maxConcurrentUploads, "max-concurrent-uploads", 2, "Number of CI uploads processed in parallel; others get a retryable 503 with Retry-After, which `preview upload` waits out (0 = unlimited)")
 	serve.Flags().StringArrayVar(&opts.reservedUpstreams, "reserved-upstream", nil, "Route a fixed host under the preview domain to an upstream, as <label>=host:port (e.g. app=127.0.0.1:3100) — served behind the SSO gate but outside the deploy machinery, for always-on companion services. Repeatable (default: $PREVIEW_RESERVED_UPSTREAMS, comma-separated)")
 	serve.Flags().StringVar(&opts.onyxAuthUpstream, "onyx-auth-upstream", "", "Enable onyx single-sign-on for previews: the reserved-upstream label of the one canonical onyx host that owns the Google OAuth client (e.g. app). Previews without an onyx session bounce there to log in, and the shared-secret JWT rides back across the preview domain (default: $PREVIEW_ONYX_AUTH_UPSTREAM; empty disables it)")
 	serve.Flags().StringVar(&opts.onyxAuthCookie, "onyx-auth-cookie", "", "onyx session cookie the proxy watches for when --onyx-auth-upstream is set (default: $PREVIEW_ONYX_AUTH_COOKIE, else onyx's own default \"fastapiusersauth\")")
@@ -384,6 +386,7 @@ func run(opts serveOptions) error {
 		GitHubWebhookSecret: opts.githubSecret,
 		UploadAuth:          uploadAuth,
 		MaxUploadBytes:      opts.maxUploadBytes,
+		UploadSlots:         uploadSlots(opts.maxConcurrentUploads),
 		SSO:                 sso,
 		DashboardOrigin:     dashboardOrigin,
 		CookiesSecure:       cookiesSecure,
@@ -964,6 +967,14 @@ func startCacheSweeper(ctx context.Context, files *store.Store, super *supervise
 // reconcileInterval is how often the durable tier is reconciled against the
 // live deploy set after the initial startup pass.
 const reconcileInterval = time.Hour
+
+// uploadSlots returns the API's upload limiter; n <= 0 means unlimited.
+func uploadSlots(n int) chan struct{} {
+	if n <= 0 {
+		return nil
+	}
+	return make(chan struct{}, n)
+}
 
 // defaultMaxUploadBytes bounds a CI upload's compressed body and its
 // decompressed expansion out of the box, so an unauthenticated (auth-exempt by

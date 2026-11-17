@@ -31,10 +31,23 @@ func (d Deps) handleUploadArtifact(w http.ResponseWriter, r *http.Request) {
 	d.handleUpload(w, r, build.SideArtifact, r.PathValue("name"))
 }
 
+// uploadRetryAfterSeconds is the Retry-After a busy server sends.
+const uploadRetryAfterSeconds = 10
+
 func (d Deps) handleUpload(w http.ResponseWriter, r *http.Request, side, name string) {
 	repo := r.PathValue("repo")
 	if d.UploadAuth != nil && !d.authorizeUpload(w, r, repo) {
 		return
+	}
+	if d.UploadSlots != nil {
+		select {
+		case d.UploadSlots <- struct{}{}:
+			defer func() { <-d.UploadSlots }()
+		default:
+			w.Header().Set("Retry-After", strconv.Itoa(uploadRetryAfterSeconds))
+			httpError(w, http.StatusServiceUnavailable, "the server is processing its maximum number of uploads; retry later")
+			return
+		}
 	}
 	ref := r.URL.Query().Get("ref")
 	if ref == "" {
