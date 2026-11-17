@@ -100,6 +100,11 @@ type Deps struct {
 	// (auth-exempt by default) client can push before extraction. 0 disables
 	// the wire cap; the store's decompression cap still bounds expansion.
 	MaxUploadBytes int64
+	// UploadSlots bounds uploads processed at once. Each upload resolves and
+	// hashes the commit in process, so unbounded concurrency exhausts the
+	// host's memory. A full channel rejects the upload with a retryable 503;
+	// nil leaves uploads unbounded.
+	UploadSlots chan struct{}
 	// SSO authenticates interactive dashboard logins (browser session cookie)
 	// and programmatic callers (GitHub personal-access token as a bearer),
 	// both against one allowlist. nil disables authentication entirely — the

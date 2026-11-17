@@ -8,10 +8,10 @@ target "default" {
   context = "."
   dockerfile = "Dockerfile"
   cache_from = [
-    "docker.io/lahmanja/local-preview:latest",
+    "ghcr.io/rohoswagger/local-preview:latest",
   ]
   tags = [
-    "lahmanja/local-preview:latest",
+    "ghcr.io/rohoswagger/local-preview:latest",
   ]
   args = {
     BUILDKIT_INLINE_CACHE = 1

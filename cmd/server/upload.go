@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand/v2"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -44,9 +46,9 @@ func uploadCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		token, err := uploadToken(cmd.Context(), oidc, oidcAudience, url)
-		if err != nil {
-			return err
+		// OIDC tokens expire within minutes, so each attempt mints its own.
+		token := func(ctx context.Context) (string, error) {
+			return uploadToken(ctx, oidc, oidcAudience, url)
 		}
 		return runUpload(cmd.Context(), url, cmd.OutOrStdout(),
 			repoFlag, side, name, path, ref, overwrite, deploy, token)
@@ -88,11 +90,13 @@ func argRef(args []string, i int) string {
 	return ""
 }
 
-func runUpload(ctx context.Context, url string, out io.Writer, repoName, side, name, path, ref string, overwrite, deploy bool, token string) error {
+func runUpload(ctx context.Context, url string, out io.Writer, repoName, side, name, path, ref string, overwrite, deploy bool, token func(context.Context) (string, error)) error {
 	c := client.New(url, nil)
-	if token != "" {
-		c.SetToken(token)
+	tok, err := token(ctx)
+	if err != nil {
+		return err
 	}
+	c.SetToken(tok)
 
 	if ref == "" {
 		sha, err := localHeadSHA(".")
@@ -108,13 +112,7 @@ func runUpload(ctx context.Context, url string, out io.Writer, repoName, side, n
 		}
 	}
 
-	body, err := openUploadBody(path)
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-
-	res, err := c.Upload(ctx, repoName, side, name, ref, overwrite, body)
+	res, err := uploadWhenAdmitted(ctx, c, out, token, repoName, side, name, ref, path, overwrite)
 	if err != nil {
 		return err
 	}
@@ -137,6 +135,50 @@ func runUpload(ctx context.Context, url string, out io.Writer, repoName, side, n
 		return triggerDeploy(ctx, c, out, repoName, ref)
 	}
 	return nil
+}
+
+// uploadBusyTimeout bounds how long an upload waits out a busy server.
+const uploadBusyTimeout = 30 * time.Minute
+
+// uploadWhenAdmitted uploads path, retrying while the server answers 503
+// (at upload capacity, or briefly unavailable). Each retry reopens the body
+// and mints a fresh token.
+func uploadWhenAdmitted(ctx context.Context, c *client.Client, out io.Writer, token func(context.Context) (string, error), repoName, side, name, ref, path string, overwrite bool) (client.UploadResult, error) {
+	deadline := time.Now().Add(uploadBusyTimeout)
+	for attempt := 0; ; attempt++ {
+		if attempt > 0 {
+			tok, err := token(ctx)
+			if err != nil {
+				return client.UploadResult{}, err
+			}
+			c.SetToken(tok)
+		}
+		body, err := openUploadBody(path)
+		if err != nil {
+			return client.UploadResult{}, err
+		}
+		res, err := c.Upload(ctx, repoName, side, name, ref, overwrite, body)
+		body.Close()
+		var status *client.StatusError
+		if !errors.As(err, &status) || status.StatusCode != http.StatusServiceUnavailable {
+			return res, err
+		}
+		wait := 5 * time.Second
+		if status.RetryAfter > 0 {
+			wait = time.Duration(status.RetryAfter) * time.Second
+		}
+		// Jitter spreads out CI jobs that were rejected together.
+		wait += rand.N(wait / 2)
+		if time.Now().Add(wait).After(deadline) {
+			return client.UploadResult{}, fmt.Errorf("%w (still busy after %s)", err, uploadBusyTimeout)
+		}
+		fmt.Fprintf(out, "server busy; retrying the upload in %s\n", wait.Round(time.Second))
+		select {
+		case <-ctx.Done():
+			return client.UploadResult{}, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
 }
 
 // triggerDeploy deploys the just-uploaded commit and waits for it to settle —

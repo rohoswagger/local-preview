@@ -1,10 +1,8 @@
 # local-preview
 
-[![Test status](https://github.com/jmelahman/local-preview/actions/workflows/test.yml/badge.svg)](https://github.com/jmelahman/local-preview/actions)
-[![Deploy Status](https://github.com/jmelahman/local-preview/actions/workflows/release.yml/badge.svg)](https://github.com/jmelahman/local-preview/actions)
-[![Docs](https://github.com/jmelahman/local-preview/actions/workflows/docs.yml/badge.svg)](https://jmelahman.github.io/local-preview/)
+[![Test status](https://github.com/rohoswagger/local-preview/actions/workflows/test.yml/badge.svg)](https://github.com/rohoswagger/local-preview/actions)
+[![Deploy Status](https://github.com/rohoswagger/local-preview/actions/workflows/release.yml/badge.svg)](https://github.com/rohoswagger/local-preview/actions)
 [![Go Reference](https://pkg.go.dev/badge/github.com/jmelahman/local-preview.svg)](https://pkg.go.dev/github.com/jmelahman/local-preview)
-[![PyPI](https://img.shields.io/pypi/v/local-preview.svg)](https://pypi.org/project/local-preview/)
 
 A local-first preview-deployment orchestrator: every commit of a registered
 git repository becomes a servable preview at its own subdomain
@@ -21,12 +19,13 @@ branches can never corrupt each other.
 
 ## Install
 
-```sh
-uv tool install local-preview
-```
+Download the `preview` binary for your platform from the
+[fork releases](https://github.com/rohoswagger/local-preview/releases)
+and put it on your `PATH`.
 
-This installs the binary to `~/.local/bin/preview`.
-Make sure to have that on your `PATH`.
+This fork publishes server images to `ghcr.io/rohoswagger/local-preview`.
+See [installation](docs/guide/install.md) for image access and release steps.
+The Go module path remains `github.com/jmelahman/local-preview`.
 
 ## Run
 
@@ -37,8 +36,7 @@ preview serve
 The server listens on `:8080`. Open <http://localhost:8080/> for the
 dashboard.
 
-Or with [Docker
-Compose](https://jmelahman.github.io/local-preview/guide/install):
+Or with [Docker Compose](docs/guide/install.md):
 
 ```sh
 docker compose up -d
@@ -46,9 +44,9 @@ docker compose up -d
 
 ## 📖 Documentation
 
-Full documentation lives at **<https://jmelahman.github.io/local-preview/>**:
+Fork documentation lives in [`docs/`](docs/):
 
-- [Quickstart](https://jmelahman.github.io/local-preview/guide/quickstart) — register a repo, deploy a commit, open the preview.
-- [Configuration](https://jmelahman.github.io/local-preview/guide/configuration) — flags and env vars.
-- [REST API](https://jmelahman.github.io/local-preview/reference/api) — endpoints exposed by the running server.
-- [CLI](https://jmelahman.github.io/local-preview/reference/cli) — `serve`, `repo`, `deploy`, `install-hook`.
+- [Quickstart](docs/guide/quickstart.md) — register a repo, deploy a commit, open the preview.
+- [Configuration](docs/guide/configuration.md) — flags and env vars.
+- [REST API](docs/reference/api.md) — endpoints exposed by the running server.
+- [CLI](docs/reference/cli.md) — `serve`, `repo`, `deploy`, `install-hook`.

@@ -407,6 +407,16 @@ func (c *Client) Upload(ctx context.Context, repo, side, name, ref string, overw
 	return res, nil
 }
 
+// StatusError is a non-2xx API response. RetryAfter is the server's
+// Retry-After hint in seconds, or 0 when it sent none.
+type StatusError struct {
+	StatusCode int
+	RetryAfter int
+	msg        string
+}
+
+func (e *StatusError) Error() string { return e.msg }
+
 // do performs a request and returns the response body, converting non-2xx
 // responses into errors using the API's {"error": "..."} body when present.
 func (c *Client) do(ctx context.Context, method, path string, body []byte) (json.RawMessage, error) {
@@ -426,6 +436,10 @@ func (c *Client) doStream(ctx context.Context, method, path, contentType string,
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
+	if contentType == "application/octet-stream" {
+		// A busy or rejecting server answers before the archive is sent.
+		req.Header.Set("Expect", "100-continue")
+	}
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
@@ -439,23 +453,32 @@ func (c *Client) doStream(ctx context.Context, method, path, contentType string,
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var e struct {
-			Error string `json:"error"`
+		retryAfter, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
+		return nil, &StatusError{
+			StatusCode: resp.StatusCode,
+			RetryAfter: retryAfter,
+			msg:        c.statusMessage(method, path, resp.StatusCode, raw),
 		}
-		if json.Unmarshal(raw, &e) == nil && e.Error != "" {
-			if resp.StatusCode == http.StatusUnauthorized {
-				// The server wants a credential this client didn't (or
-				// couldn't) present — say how to fix it instead of leaving a
-				// bare "authentication required".
-				hint := "sign in to the GitHub CLI (`gh auth login`) so its token is used automatically, or set one explicitly: `preview configure --token <github-pat>` / $PREVIEW_TOKEN"
-				if c.token != "" {
-					hint = "the presented GitHub token was rejected — it may be expired, revoked, or its account not on the server's allowlist"
-				}
-				return nil, fmt.Errorf("%s %s: %s (%s)", method, path, e.Error, hint)
-			}
-			return nil, fmt.Errorf("%s %s: %s", method, path, e.Error)
-		}
-		return nil, fmt.Errorf("%s %s: unexpected status %d", method, path, resp.StatusCode)
 	}
 	return raw, nil
+}
+
+func (c *Client) statusMessage(method, path string, status int, raw []byte) string {
+	var e struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal(raw, &e) != nil || e.Error == "" {
+		return fmt.Sprintf("%s %s: unexpected status %d", method, path, status)
+	}
+	if status == http.StatusUnauthorized {
+		// The server wants a credential this client didn't (or couldn't)
+		// present — say how to fix it instead of leaving a bare
+		// "authentication required".
+		hint := "sign in to the GitHub CLI (`gh auth login`) so its token is used automatically, or set one explicitly: `preview configure --token <github-pat>` / $PREVIEW_TOKEN"
+		if c.token != "" {
+			hint = "the presented GitHub token was rejected — it may be expired, revoked, or its account not on the server's allowlist"
+		}
+		return fmt.Sprintf("%s %s: %s (%s)", method, path, e.Error, hint)
+	}
+	return fmt.Sprintf("%s %s: %s", method, path, e.Error)
 }

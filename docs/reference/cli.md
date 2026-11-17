@@ -17,6 +17,7 @@ Start the orchestrator.
 | `--preview-domain` | `preview.localhost` | Base domain previews are served under |
 | `--preview-base-url` | (derived) | Public base URL of previews, e.g. `https://preview.example.com` — sets the scheme, domain, and port of generated preview URLs when the server sits behind a proxy |
 | `--build-concurrency` | `2` | Number of deploys built in parallel |
+| `--max-concurrent-uploads` | `2` | Number of CI [uploads](/reference/api#uploads) processed in parallel. Each upload resolves and hashes its commit in process, so this bounds upload memory. Others get a `503` with `Retry-After`, which `preview upload` waits out for up to 30 minutes (`0` = unlimited) |
 | `--poll-interval` | `1m` | How often watched repos are fetched for new commits (`0` disables watching) |
 | `--min-warm-window` | (always active) | Active hours for the [min-warm floor](/reference/api#get-apiwarm), e.g. `"Mon-Fri 08:00-18:00 America/Chicago"` (tz optional, default UTC). Outside the window the floor is `0`, so idle previews drain and the worker fleet can scale to zero; demand-driven scale-out is unaffected (default: `$PREVIEW_MIN_WARM_WINDOW`) |
 | `--github-webhook-secret` | `$PREVIEW_GITHUB_WEBHOOK_SECRET` | Shared secret validating GitHub webhook deliveries (empty disables the endpoint) |

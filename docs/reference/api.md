@@ -495,7 +495,9 @@ Errors: `404` for an unknown repo or an artifact name the manifest doesn't
 declare; `409` if the repo isn't `ready` (still cloning, or its clone failed);
 `413` if the request body or its decompressed size exceeds `--max-upload-bytes`;
 `400` for a missing/unresolvable `ref`, a manifest error, a malformed tar, or a
-tar missing a declared artifact file.
+tar missing a declared artifact file. `503` with `Retry-After` if the server
+is already processing `--max-concurrent-uploads` uploads; retry after the
+given delay.
 
 #### Authentication
 
