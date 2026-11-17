@@ -28,7 +28,7 @@ func Handler() http.Handler {
 		}
 		// Embedded files carry no modtime, so responses have no validator
 		// and can't be revalidated — set explicit cache policy instead.
-		// Vite content-hashes every /assets/ filename, making those
+		// The build content-hashes every /assets/ filename, making those
 		// immutable; everything else (index.html, favicon) must stay fresh
 		// so a new binary's asset names are picked up.
 		if strings.HasPrefix(r.URL.Path, "/assets/") {

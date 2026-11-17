@@ -1,7 +1,7 @@
 # local-preview — Claude Notes
 
 A local-first preview-deployment orchestrator: a Go backend (repo root) plus
-a React/Vite dashboard (`web/`). Registered git repos get a preview per
+a React dashboard built with Bun (`web/`). Registered git repos get a preview per
 commit at `<sha>-<repo>.preview.localhost:8080` — content-addressed builds,
 on-demand backend processes, lineage-forked state. Architecture notes live in
 `docs/guide/concepts.md`; the target-repo contract in
@@ -65,8 +65,8 @@ zero, and shutting the process down discards everything.
 - Frontend format: `cd web && bun run format:check` (`format` to apply). The
   `prek` `bun-fmt` hook runs the same check. Lint: `bun run lint` (`lint:fix` to apply), also the `oxlint` hook.
 - Playwright E2E: `cd web && bun run test:e2e` (first run `test:e2e:install`
-  for Chromium; boots the real backend with `--in-memory` plus the Vite dev
-  server).
+  for Chromium; boots the real backend with `--in-memory` plus the Bun dev
+  server, `web/dev.ts`).
 - Pre-commit hooks: `prek run --all-files` (run before committing).
 
 ## Driving the UI with Playwright MCP
@@ -83,7 +83,7 @@ never spawn `bunx playwright` ad-hoc.
 ## Layout
 
 - `main.go`, `cmd/`, `internal/` — Go server and CLI subcommands.
-- `web/` — Vite + React 19 + Tailwind 4 frontend, embedded into the binary
+- `web/` — React 19 + Tailwind 4 frontend bundled by Bun (`build.ts`; `dev.ts` serves it with HMR and an `/api` proxy), embedded into the binary
   with `-tags embed`.
 - `docs/` — VitePress site (`guide/`, `reference/api.md`, `reference/cli.md`).
 - `.config/kanban/config.toml` — agentic-kanban session image (`ghcr.io/jmelahman/devcontainer`,

@@ -47,7 +47,8 @@ include = [
   "web/bunfig.toml",
   "web/index.html",
   "web/tsconfig.json",
-  "web/vite.config.ts",
+  "web/build.ts",
+  "web/dev.ts",
   "web/public/**",
   "web/src/**",
 ]

@@ -10,7 +10,7 @@ changing nothing.
 
 ## Example
 
-The shape this repository itself uses (Go backend at the root, Vite frontend
+The shape this repository itself uses (Go backend at the root, Bun-built frontend
 in `web/`):
 
 ```toml
